@@ -98,6 +98,7 @@ io.on('connection',(socket) => {
                 streamRoom = rooms[i].id
             }
         }
+        rooms = rooms.filter(room => room.id !== streamRoom)
         socket.leave(streamRoom)
         socket.to(streamRoom).emit('disconnected','one disconnected')
         // broadcasterViewer[user.id].push(socket.id)
