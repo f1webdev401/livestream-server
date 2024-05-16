@@ -4,9 +4,17 @@ const cors = require('cors')
 const app = express()
 
 const {Server} = require('socket.io')
-app.use(cors(
-   { origin: 'http://localhost:3000'}
-))
+const allowedOrigins = ['http://localhost:3000', 'https://your-frontend-domain.com'];
+
+app.use(cors({
+    origin: function(origin, callback) {
+        if (!origin || allowedOrigins.includes(origin)) {
+            callback(null, true);
+        } else {
+            callback(new Error('Not allowed by CORS'));
+        }
+    }
+}));
 const httpServer = createServer(app)
 const io = new Server(httpServer, {
     cors: {
