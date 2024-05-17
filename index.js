@@ -4,7 +4,7 @@ const cors = require('cors')
 const app = express()
 
 const {Server} = require('socket.io')
-const allowedOrigins = ['http://localhost:3000', 'https://your-frontend-domain.com'];
+const allowedOrigins = ['http://localhost:3000', 'https://f1webdev.tech'];
 
 app.use(cors({
     origin: function(origin, callback) {
@@ -23,8 +23,9 @@ const io = new Server(httpServer, {
     }
 })
 let broadcasters = {};
-let rooms = []
+let rooms = []  
 let broadcasterViewer = {}
+let broadcasterId = {}
 io.on('connection',(socket) => {
     // console.log(socket.id)
     socket.on('message',(message , room) => {
@@ -44,9 +45,7 @@ io.on('connection',(socket) => {
         }
         rooms.push({id: streamInfo.id,name: streamInfo.name,caption: streamInfo.caption})
         io.emit('created-stream',rooms)
-        console.log(streamInfo.id,'asdasd132')
-        broadcasterViewer[streamInfo.id] = []
-        console.log(broadcasterViewer)
+        broadcasterViewer[streamInfo.id] = ['']
         
     })
 
@@ -58,8 +57,9 @@ io.on('connection',(socket) => {
         broadcasters[room] = socket.id;
         // console.log(broadcasters,'this is broadcasters')
         socket.join(room);
+        broadcasterId[room] = broadcasters[room]
         const numberOfViewers = io.sockets.adapter.rooms.get(room)?.size || 0;
-        socket.to(room).emit('viewers', numberOfViewers - 1)
+        io.to(room).emit('viewers', numberOfViewers - 1)
     });
 
     socket.on('register as viewer',(user) => {
@@ -71,12 +71,10 @@ io.on('connection',(socket) => {
         // if(typeof broadcasterViewer[user.id] === array) {
         //     broadcasterViewer[user.id].push(socket.id)
         // }
-        console.log(typeof broadcasterViewer[user.id]=== Array)
         broadcasterViewer[user.id].push(socket.id)
-        console.log(typeof broadcasterViewer[user.id],'asdasd')
-        console.log( broadcasterViewer[user.id].length)
         const numberOfViewers = io.sockets.adapter.rooms.get(user.id)?.size || 0;
-        socket.to(user.id).emit('viewers', numberOfViewers - 1)
+        io.to(user.id).emit('viewers', numberOfViewers - 1)
+        
         // console.log(`Number of viewers in room ${user.id}: ${numberOfViewers}`);
     })
     socket.on('candidate',(id,event) => {
@@ -94,11 +92,35 @@ io.on('connection',(socket) => {
         let streamRoom;
         for(let i = 0 ; i < rooms.length ; i ++) {
             if(broadcasterViewer[rooms[i].id].includes(socket.id)) {
-                console.log(rooms[i].id, 'this is the id')
                 streamRoom = rooms[i].id
             }
+        
         }
-        rooms = rooms.filter(room => room.id !== streamRoom)
+        // if(streamRoom) {
+        //     // if(broadcasters[streamRoom] === undefined) {
+        //     //     rooms = rooms.filter(room => room.id !== streamRoom)
+        //     //     io.emit('created-stream',rooms)
+        //     // }
+        //     console.log('there is stream room')
+        // }else {
+        //     if(rooms.length !== 0) {
+        //         rooms = rooms.filter(room => room.id !== streamRoom)
+        //       io.emit('created-stream',rooms) 
+        //     }
+        //     console.log('no is stream room')
+        // }
+        let broadcasterIds = Object.keys(broadcasterId)
+        for(let i = 0 ; i < broadcasterIds.length ; i ++) {
+        //    if(broadcasters[broadcasterIds[i]] == socket.id)  {
+        //     console.log(broadcasterId[i])
+        //    }
+        if(broadcasters[broadcasterIds[i]] === socket.id) {
+            rooms = rooms.filter(room => room.id !== broadcasterIds[i])
+            io.emit('created-stream',rooms)
+        }
+
+        }
+       
         socket.leave(streamRoom)
         socket.to(streamRoom).emit('disconnected','one disconnected')
         // broadcasterViewer[user.id].push(socket.id)
@@ -106,6 +128,7 @@ io.on('connection',(socket) => {
         socket.to(streamRoom).emit('viewers', numberOfViewers - 1)
         socket.to(streamRoom).emit('reconnect')
     })
+
     
 })
 
