@@ -26,24 +26,29 @@ let broadcasters = {};
 let rooms = []  
 let broadcasterViewer = {}
 let broadcasterId = {}
+let chatDatabase = {}
 io.on('connection',(socket) => {
-    // console.log(socket.id)
-    socket.on('message',(message , room) => {
-        io.to(room).emit('receive-message',message)
+    socket.on('message',(message , room , name, image) => {
+        if(chatDatabase[room]) {
+            chatDatabase[room].push({user: name , message:message,image:image})
+        }
+        io.to(room).emit('receive-message',chatDatabase[room])
     })
-    socket.on('streamer-message' , (message,room) => {
-        io.to(room).emit('receive-message',message)
+    socket.on('streamer-message' ,(message,room,name,image) => {
+        if(chatDatabase[room]) {
+            chatDatabase[room].push({user: name , message: message,image:image})
+        }
+        io.to(room).emit('receive-message',chatDatabase[room])
     })
     socket.on('join-stream',(room , viewerId) => {
             socket.join(room)
             socket.to(room).emit('joined', viewerId)
     })
     socket.on('create-stream',(streamInfo) => {
-        // console.log(streamInfo)
         for(let i = 0 ; i < rooms.length ; i ++) {
             if(rooms[i].id === streamInfo.id) return ;
         }
-        rooms.push({id: streamInfo.id,name: streamInfo.name,caption: streamInfo.caption})
+        rooms.push({id: streamInfo.id,name: streamInfo.name,caption: streamInfo.caption , imagestream: streamInfo.streamImgThumbnail})
         io.emit('created-stream',rooms)
         broadcasterViewer[streamInfo.id] = ['']
         
@@ -53,29 +58,27 @@ io.on('connection',(socket) => {
 
 
     socket.on("register as broadcaster",  (room) => {
-        // console.log("register as broadcaster for room", room);
         broadcasters[room] = socket.id;
-        // console.log(broadcasters,'this is broadcasters')
         socket.join(room);
         broadcasterId[room] = broadcasters[room]
 
-        console.log(broadcasters)
+        chatDatabase[room] = []
         const numberOfViewers = io.sockets.adapter.rooms.get(room)?.size || 0;
         io.to(room).emit('viewers', numberOfViewers - 1)
+        io.to(room).emit('receive-message',chatDatabase[room])
+
     });
 
     socket.on('register as viewer',(user) => {
-        // console.log("register as viewer for room", user.v_id);
         if(!broadcasterViewer[user.id]) return ;
-        console.log(socket.id)
         socket.join(user.id)
         user.v_id = socket.id  
         socket.to(broadcasters[user.id]).emit('new viewer',user)
         broadcasterViewer[user.id].push(socket.id)
         const numberOfViewers = io.sockets.adapter.rooms.get(user.id)?.size || 0;
         io.to(user.id).emit('viewers', numberOfViewers - 1)
+        io.to(user.id).emit('receive-message',chatDatabase[user.id])
         
-        // console.log(`Number of viewers in room ${user.id}: ${numberOfViewers}`);
     })
     socket.on('candidate',(id,event) => {
         socket.to(id).emit("candidate", socket.id, event);
@@ -110,8 +113,6 @@ io.on('connection',(socket) => {
             io.emit('created-stream',rooms)
         }
         }
-       
-        
         socket.leave(streamRoom)
         socket.to(streamRoom).emit('disconnected',socket.id)
         const numberOfViewers = io.sockets.adapter.rooms.get(streamRoom)?.size || 0;
