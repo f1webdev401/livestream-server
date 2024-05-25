@@ -29,9 +29,9 @@ let broadcasterId = {}
 let chatDatabase = {}
 io.on('connection',(socket) => {
     // message , room , name, image , isSending
-    socket.on('message',(message , room , name, image ,sending,msgIda) => {
+    socket.on('message',(message , room , name, image ,sending,msgId) => {
         if(chatDatabase[room]) {
-            chatDatabase[room] = {...chatDatabase[room] , [msgIda]: {user:name,message:message,sending:false,image:image}}
+            chatDatabase[room] = {...chatDatabase[room] , [msgId]: {user:name,message:message,sending:false,image:image}}
         }
         io.to(room).emit('receive-message',chatDatabase[room])
     })
@@ -51,7 +51,7 @@ io.on('connection',(socket) => {
         }
         rooms.push({id: streamInfo.id,name: streamInfo.name,caption: streamInfo.caption , imagestream: streamInfo.streamImgThumbnail})
         io.emit('created-stream',rooms)
-        broadcasterViewer[streamInfo.id] = ['']
+        broadcasterViewer[streamInfo.id] = ['a']
         
     })
 
@@ -71,6 +71,7 @@ io.on('connection',(socket) => {
     });
 
     socket.on('register as viewer',(user) => {
+        console.log('asdasd')
         if(!broadcasterViewer[user.id]) return ;
         socket.join(user.id)
         user.v_id = socket.id  
@@ -112,6 +113,8 @@ io.on('connection',(socket) => {
         if(broadcasters[broadcasterIds[i]] === socket.id) {
             rooms = rooms.filter(room => room.id !== broadcasterIds[i])
             io.emit('created-stream',rooms)
+            delete broadcasters[streamRoom]
+            chatDatabase[streamRoom] = []
         }
         }
         socket.leave(streamRoom)
