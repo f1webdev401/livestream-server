@@ -28,9 +28,10 @@ let broadcasterViewer = {}
 let broadcasterId = {}
 let chatDatabase = {}
 io.on('connection',(socket) => {
-    socket.on('message',(message , room , name, image) => {
+    // message , room , name, image , isSending
+    socket.on('message',(message , room , name, image ,sending,msgIda) => {
         if(chatDatabase[room]) {
-            chatDatabase[room].push({user: name , message:message,image:image})
+            chatDatabase[room] = {...chatDatabase[room] , [msgIda]: {user:name,message:message,sending:false,image:image}}
         }
         io.to(room).emit('receive-message',chatDatabase[room])
     })
@@ -62,7 +63,7 @@ io.on('connection',(socket) => {
         socket.join(room);
         broadcasterId[room] = broadcasters[room]
 
-        chatDatabase[room] = []
+        chatDatabase[room] = {}
         const numberOfViewers = io.sockets.adapter.rooms.get(room)?.size || 0;
         io.to(room).emit('viewers', numberOfViewers - 1)
         io.to(room).emit('receive-message',chatDatabase[room])
