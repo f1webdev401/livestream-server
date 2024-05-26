@@ -28,6 +28,7 @@ let broadcasterViewer = {}
 let broadcasterId = {}
 let chatDatabase = {}
 io.on('connection',(socket) => {
+    io.emit('created-stream',rooms)
     // message , room , name, image , isSending
     socket.on('message',(message , room , name, image ,sending,msgId) => {
         if(chatDatabase[room]) {
@@ -55,7 +56,6 @@ io.on('connection',(socket) => {
         
     })
 
-    io.emit('created-stream',rooms)
 
 
     socket.on("register as broadcaster",  (room) => {
